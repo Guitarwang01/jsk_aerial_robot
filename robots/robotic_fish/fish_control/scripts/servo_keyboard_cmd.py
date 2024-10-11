@@ -42,6 +42,7 @@ if __name__=="__main__":
         settings = termios.tcgetattr(sys.stdin)
         rospy.init_node("servo_control_publisher")
         pub = rospy.Publisher('/servo/target_states', ServoControlCmd, queue_size=10)
+        print(msg)
 
         rospy.sleep(0.01)
         pos_init = 2047
