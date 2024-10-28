@@ -50,6 +50,7 @@ if __name__=="__main__":
         wave_small = 200
         current_pos_0 = pos_init
         current_pos_1 = pos_init
+        current_pos_2 = pos_init
         running = False
 
 
@@ -115,19 +116,19 @@ if __name__=="__main__":
                             msg = "continue forward"
 
                         if key == 'k':
-                            if current_pos_1 > 3072:
+                            if current_pos_2 > 3072:
                                 continue
-                            current_pos_1 += 200
-                            print(current_pos_1)
-                            pub.publish(ServoControlCmd(index=[1], angles=[current_pos_1]))
+                            current_pos_2 += 200
+                            print(current_pos_2)
+                            pub.publish(ServoControlCmd(index=[2], angles=[current_pos_2]))
                             rospy.sleep(0.3)
                             msg = "tail up"
 
                         if key == 'i':
-                            if current_pos_1 <= 1024:
+                            if current_pos_2 <= 1024:
                                 continue
-                            current_pos_1 -= 200
-                            pub.publish(ServoControlCmd(index=[1], angles=[current_pos_1]))
+                            current_pos_2 -= 200
+                            pub.publish(ServoControlCmd(index=[1], angles=[current_pos_2]))
                             rospy.sleep(0.3)
                             msg = "tail down"
 
