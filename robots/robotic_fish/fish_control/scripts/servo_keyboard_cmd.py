@@ -128,7 +128,7 @@ if __name__=="__main__":
                             if current_pos_2 <= 1024:
                                 continue
                             current_pos_2 -= 200
-                            pub.publish(ServoControlCmd(index=[1], angles=[current_pos_2]))
+                            pub.publish(ServoControlCmd(index=[2], angles=[current_pos_2]))
                             rospy.sleep(0.3)
                             msg = "tail down"
 
