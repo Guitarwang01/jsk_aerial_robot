@@ -79,6 +79,8 @@ if __name__=="__main__":
                             pub.publish(ServoControlCmd(index=[0, 1, 2, 3], angles=[pos_init, pos_init, pos_init, pos_init]))
                             current_pos_0 = pos_init
                             current_pos_1 = pos_init
+                            current_pos_2 = pos_init
+                            current_pos_3 = pos_init
                             msg = "back to initial position"
 
                         if key == 'a':
