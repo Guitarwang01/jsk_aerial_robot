@@ -45,6 +45,14 @@
 //#define WHEEL_TEST
 //#define SET_HOMING_OFFSET
 
+//################ define - Dynamixel operating mode table ######################
+#define CURRENT_CONTROL_MODE 0
+#define VELOCITY_CONTROL_MODE 1
+#define POSITION_CONTROL_MODE 3
+#define EXTENDED_POSITION_CONTROL_MODE 4
+#define CURRENT_BASE_POSITION_CONTROL_MODE 5
+#define PWM_CONTROL_MODE 16
+
 //#########################################################################
 //################ define - Dynamixel Hex control table ######################
 
@@ -124,6 +132,7 @@
 #define LED_BYTE_LEN					1
 #define STATUS_RETURN_LEVEL_BYTE_LEN	1
 #define GOAL_POSITION_BYTE_LEN			4
+#define GOAL_VELOCITY_BYTE_LEN			4
 #define PRESENT_POSITION_BYTE_LEN		4
 #define PRESENT_CURRENT_BYTE_LEN		2
 #define PRESENT_TEMPERATURE_BYTE_LEN	1
@@ -132,6 +141,8 @@
 #define POSITION_GAINS_BYTE_LEN			6
 #define PROFILE_VELOCITY_BYTE_LEN		4
 #define CURRENT_LIMIT_BYTE_LEN			2
+#define OPERATING_MODE_BYTE_LEN 		1
+
 
 //#########################################################################
 //############################ Specials ###################################
@@ -200,6 +211,8 @@
 #define INST_SET_POSITION_GAINS			13
 #define INST_SET_PROFILE_VELOCITY		14
 #define INST_SET_TORQUE					15
+#define INST_GET_OPERATING_MODE			17
+#define INST_SET_GOAL_VEL 				18
 
 //instruction frequency: 0 means no process
 #define SET_POS_DU 20 //[msec], 20ms => 50Hz
@@ -282,12 +295,13 @@ private:
 class ServoData {
 public:
 	ServoData(){}
-  ServoData(uint8_t id): id_(id), torque_enable_(false), first_get_pos_flag_(true), internal_offset_(0){}
+  ServoData(uint8_t id): id_(id), torque_enable_(false), first_get_pos_flag_(true), internal_offset_(0),operating_mode_(0),goal_velocity_(0),goal_position_(0) {}
 
 	uint8_t id_;
   	int32_t present_position_;
 	int32_t goal_position_;
-        int32_t calib_value_;
+	int32_t goal_velocity_;
+	int32_t calib_value_;
 	int32_t homing_offset_;
         int32_t internal_offset_;
         uint8_t present_temp_;
@@ -308,13 +322,17 @@ public:
 	bool first_get_pos_flag_;
         float angle_scale_;
         uint16_t zero_point_offset_;
+	uint8_t operating_mode_;
 
 	void updateHomingOffset() { homing_offset_ = calib_value_ - present_position_;}
 	void setPresentPosition(int32_t present_position) {present_position_ = present_position + internal_offset_;}
 	int32_t getPresentPosition() const {return present_position_;}
+	void setGoalValue(int32_t goal_value);
 	void setGoalPosition(int32_t goal_position) {goal_position_ = resolution_ratio_ * goal_position - internal_offset_;}
+	void setGoalVelocity(int32_t goal_velocity) {goal_velocity_ = goal_velocity;}
         int32_t getGoalPosition() const {return goal_position_;}
-        float getAngleScale() const {return angle_scale_;}
+	int32_t getGoalVelocity() const {return goal_velocity_;}
+	float getAngleScale() const {return angle_scale_;}
         uint16_t getZeroPointOffset() const {return zero_point_offset_;}
   
 
@@ -383,6 +401,9 @@ private:
   inline void cmdReadPresentPosition(uint8_t servo_index);
   inline void cmdReadPresentTemperature(uint8_t servo_index);
   inline void cmdReadProfileVelocity(uint8_t servo_index);
+  inline void cmdReadOperatingMode(uint8_t servo_index);
+  inline void cmdWriteGoalPosition(uint8_t servo_index);
+  inline void cmdWriteGoalVelocity(uint8_t servo_index);
   inline void cmdWriteCurrentLimit(uint8_t servo_index);
   inline void cmdWriteHomingOffset(uint8_t servo_index);
   inline void cmdWritePositionGains(uint8_t servo_index);
@@ -398,6 +419,7 @@ private:
   inline void cmdSyncReadPresentPosition(bool send_all = true);
   inline void cmdSyncReadPresentTemperature(bool send_all = true);
   inline void cmdSyncReadProfileVelocity(bool send_all = true);
+  inline void cmdSyncReadOperatingMode(bool send_all = true);
   inline void cmdSyncWriteGoalPosition();
   inline void cmdSyncWriteLed();
   inline void cmdSyncWritePositionGains();
@@ -409,6 +431,7 @@ private:
   inline void getCurrentLimit();
   inline void getPositionGains();
   inline void getProfileVelocity();
+  inline void getOperatingMode();
 
   uint16_t calcCRC16(uint16_t crc_accum, uint8_t *data_blk_ptr, int data_blk_size);
 };
