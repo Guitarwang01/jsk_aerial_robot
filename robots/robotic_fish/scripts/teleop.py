@@ -15,6 +15,10 @@ class Teleop():
         self.joy_dead_zone = rospy.get_param('~joy_dead_zone', 0.1)
         self.vel_rate = rospy.get_param('~vel_rate', 250.0)
         self.max_val = rospy.get_param('~max_val', 250)
+        self.keep_vel = rospy.get_param('~keep_vel', 0.0)
+
+        self.fin_max_angle = rospy.get_param('~fin_max_angle', 1024)
+        self.fin_angle_rate = rospy.get_param('fin_angle_rate', 1024.0)
 
         self.joy_sub = rospy.Subscriber('/joy', Joy, self._joyCallback)
         self.twist_sub = rospy.Subscriber('/cmd_vel', Twist, self._twistCallback)
@@ -34,16 +38,33 @@ class Teleop():
         if forward_val < -self.max_val:
             forward_val = -self.max_val
 
+        # TODO1
+        if msg.buttons[5] == 1: #R2
+            forward_val = self.keep_vel
+        else:
+            self.keep_vel = forward_val
 
+        #TODO2
+        fin_angle = msg.axes[5]
+        fin_angle = fin_angle*self.fin_angle_rate
+        if fin_angle > self.fin_max_angle:
+            fin_angle = self.fin_max_angle
+        if fin_angle < -self.fin_max_angle:
+            fin_angle = -self.fin_max_angle
         # TODO1: push L2 or R2 buttons to give constant forward vel
 
         # TODO2: use right joystick to control the fin
 
-        msg = ServoControlCmd()
-        msg.index = [0]
-        msg.cmd.append(int(forward_val))
+        msg_0 = ServoControlCmd()
+        msg_0.index = [0]
+        msg_0.cmd.append(int(forward_val))
+        self.cmd_pub.publish(msg_0)
+        rospy.sleep(0.001)
 
-        self.cmd_pub.publish(msg)
+        msg_1 = ServoControlCmd()
+        msg_1.index = [2]
+        msg_1.cmd.append(int(fin_angle))
+        self.cmd_pub.publish(msg_1)
 
 
     def _twistCallback(self, msg):
@@ -54,7 +75,6 @@ class Teleop():
             val = self.max_val
         if vel < -self.max_val:
             val = -self.max_val
-
         msg = ServoControlCmd()
         msg.index = [0]
         msg.cmd.append(int(val))
