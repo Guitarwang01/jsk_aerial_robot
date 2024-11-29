@@ -46,7 +46,7 @@ class Teleop():
 
         #TODO2
         fin_angle_ctrl = msg.axes[5]
-        fin_angle = fin_angle_ctrl * self.fin_angle_rate + 2048.0
+        fin_angle = (-1)*fin_angle_ctrl * self.fin_angle_rate + 2048.0
         # TODO1: push L2 or R2 buttons to give constant forward vel
 
         # TODO2: use right joystick to control the fin
