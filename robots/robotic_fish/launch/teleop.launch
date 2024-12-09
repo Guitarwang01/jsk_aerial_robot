@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 
-  <arg name="dev" default="pc" doc="choose between [pc, vim4]"/> 
+  <arg name="dev" default="vim4" doc="choose between [pc, vim4]"/> 
 
   <include file="$(find spinal)/launch/bridge.launch" if = "$(eval arg('dev') == 'pc')" >
     <arg name="dev" value="$(arg dev)" />
