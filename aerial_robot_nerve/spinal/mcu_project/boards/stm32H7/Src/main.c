@@ -41,7 +41,7 @@
 #include "sensors/baro/baro_ms5611.h"
 #include "sensors/gps/gps_ublox.h"
 #include "sensors/encoder/mag_encoder.h"
-
+#include "actuators/DJI_M2006/servo.h"
 #include "battery_status/battery_status.h"
 
 #include "servo/servo.h"
@@ -109,13 +109,14 @@ IMUOnboard imu_;
 #elif IMU_ICM
 ICM20948 imu_;
 #endif
-
 Baro baro_;
 GPS gps_;
 BatteryStatus battery_status_;
 
 /* servo instance */
 DirectServo servo_;
+/* actuators */
+DJI_M2006::Servo dji_servo_;
 
 StateEstimate estimator_;
 FlightControl controller_;
@@ -142,7 +143,6 @@ void idleTaskFunc(void const * argument);
 void rosPublishTask(void const * argument);
 void voltageTask(void const * argument);
 void canRxTask(void const * argument);
-void servoTaskCallback(void const * argument);
 void coreTaskEvokeCb(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -257,17 +257,18 @@ int main(void)
     estimator_.init(&imu_, &baro_, &gps_, &nh_);
   }
 
+  dji_servo_.init(&hfdcan1, &canMsgMailHandle, &nh_, LED1_GPIO_Port, LED1_Pin);
+
+  estimator_.init(&imu_, &baro_, &gps_, &nh_);  // imu + baro + gps => att + alt + pos(xy)
+  controller_.init(&htim1, &htim4, &estimator_, &battery_status_, &nh_, &flightControlMutexHandle);
+
   FlashMemory::read(); //IMU calib data (including IMU in neurons)
 
-  DirectServo* servoptr = nullptr;
-
-  if(servo_connect) servoptr = &servo_;
-
-  controller_.init(&htim1, &htim4, &estimator_, NULL, servoptr, &battery_status_, &nh_, &flightControlMutexHandle);
-
-  bool nerve_connect = Spine::init(&hfdcan1, &nh_, &estimator_, &controller_, LED1_GPIO_Port, LED1_Pin);
-  if(nerve_connect) Spine::useRTOS(&canMsgMailHandle); // use RTOS for CAN in spianl
-
+#if NERVE_COMM        
+  Spine::init(&hfdcan1, &nh_, &estimator_, LED1_GPIO_Port, LED1_Pin);
+  Spine::useRTOS(&canMsgMailHandle); // use RTOS for CAN in spianl
+#endif
+  
   /* USER CODE END 2 */
 
   /* Create the mutex(es) */
@@ -754,7 +755,7 @@ static void MX_TIM1_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 1000;
+  sConfigOC.Pulse = 10000;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -1094,6 +1095,8 @@ void coreTaskFunc(void const * argument)
       if (!servo_.connected()) gps_.update();
       estimator_.update();
       controller_.update();
+
+      dji_servo_.update();
 
       Spine::update();
 
