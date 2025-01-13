@@ -89,7 +89,7 @@
 ///////////////////////////////////
 
 //2.4 CAN based Actuator
-#define DJI_CAN_SERVO 0
+#define DJI_CAN_SERVO 1
 
 
 #endif //__CONFIG_H
