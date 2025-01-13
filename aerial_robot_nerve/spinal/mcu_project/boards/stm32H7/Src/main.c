@@ -116,7 +116,9 @@ BatteryStatus battery_status_;
 /* servo instance */
 DirectServo servo_;
 /* actuators */
+#if DJI_CAN_SERVO
 DJI_M2006::Interface dji_servo_;
+#endif
 
 StateEstimate estimator_;
 FlightControl controller_;
@@ -257,7 +259,9 @@ int main(void)
     estimator_.init(&imu_, &baro_, &gps_, &nh_);
   }
 
+#if DJI_CAN_SERVO
   dji_servo_.init(&hfdcan1, &canMsgMailHandle, &nh_, LED1_GPIO_Port, LED1_Pin);
+#endif
 
   estimator_.init(&imu_, &baro_, &gps_, &nh_);  // imu + baro + gps => att + alt + pos(xy)
   controller_.init(&htim1, &htim4, &estimator_, &battery_status_, &nh_, &flightControlMutexHandle);
@@ -318,7 +322,7 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of coreTask */
-  osThreadDef(coreTask, coreTaskFunc, osPriorityRealtime, 0, 512);
+  osThreadDef(coreTask, coreTaskFunc, osPriorityRealtime, 0, 1024);
   coreTaskHandle = osThreadCreate(osThread(coreTask), NULL);
 
   /* definition and creation of rosSpinTask */
@@ -1095,9 +1099,9 @@ void coreTaskFunc(void const * argument)
       if (!servo_.connected()) gps_.update();
       estimator_.update();
       controller_.update();
-
+#if DJI_CAN_SERVO
       dji_servo_.update();
-
+#endif
       Spine::update();
 
       // Workaround to handle the BUSY->TIMEOUT Error problem of ETH handler in STM32H7
