@@ -8,6 +8,7 @@ import rospy
 import math
 from spinal.msg import ServoControlCmd
 from spinal.msg import ServoStates
+from spinal.msg import Imu
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
 
@@ -20,12 +21,14 @@ class Teleop():
         self.keep_vel = rospy.get_param('~keep_vel', [0.0, 0.0])
         self.servo_equ_angles = rospy.get_param('~servos_angle', [0, 0, 0])
         self.servo_cmd = rospy.get_param('~servo_cmd', [0, 0, 1024.0])
+        self.imu_angle = rospy.get_param('imu_angle', 0)
 
         self.fin_angle_rate = rospy.get_param('fin_angle_rate', 1024.0)
 
         self.joy_sub = rospy.Subscriber('/joy', Joy, self._joyCallback)
         self.twist_sub = rospy.Subscriber('/cmd_vel', Twist, self._twistCallback)
         self.servo_pos_sub = rospy.Subscriber('/servo/states', ServoStates, self._servoStateCallback)
+        self.imu_sub = rospy.Subscriber('/imu', Imu, self._imuCallback)
 
         self.cmd_pub = rospy.Publisher('/servo/target_states', ServoControlCmd, queue_size=1)
 
@@ -33,6 +36,10 @@ class Teleop():
     def _servoStateCallback(self, msg):
         self.servo_equ_angles = [msg.servos[0].angle % 4096, msg.servos[1].angle % 4096, msg.servos[2].angle]
         #rospy.loginfo("servo 0 at angle %s", msg.servos[0].angle)
+
+    def _imuCallback(self, msg):
+        self.imu_angle = msg.angle[2]
+        rospy.loginfo(self.imu_angle)
 
     def servo_sync(self):
         self.servo_cmd[0] = 0.0
