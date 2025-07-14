@@ -7,6 +7,7 @@ import numpy as np
 import rospy
 import math
 
+from duplicity.commandline import select_files
 from hgext.fsmonitor.pywatchman import sniff_len
 from spinal.msg import ServoControlCmd
 from spinal.msg import ServoStates
@@ -20,12 +21,14 @@ class Teleop():
         self.joy_dead_zone = rospy.get_param('~joy_dead_zone', 0.1)
         self.vel_rate = rospy.get_param('~vel_rate', 250.0)
         self.max_val = rospy.get_param('~max_val', 250)
-        self.max_turn_angle_val = rospy.get_param('~max_turn_angle', 630)
+        self.max_turn_angle_val = rospy.get_param('~max_turn_angle', 1024)
         self.keep_vel = rospy.get_param('~keep_vel', [0.0, 0.0])
         self.servo_equ_angles = rospy.get_param('~servos_angle', [0, 0, 0])
         self.servo_cmd = rospy.get_param('~servo_cmd', [0, 0, 1024.0])
         self.turning = rospy.get_param('~turning', False)
-        self.imu_angle = rospy.get_param('imu_angle', 0)
+        self.imu_angle = rospy.get_param('imu_angle', 0.0)
+        self.tar_angle = rospy.get_param('~tar_angle', 0.0)
+        self.feed_back = rospy.get_param('~feed_back', False)
 
         self.fin_angle_rate = rospy.get_param('fin_angle_rate', 1024.0)
 
@@ -43,7 +46,19 @@ class Teleop():
 
     def _imuCallback(self, msg):
         self.imu_angle = msg.angle[2]
-        rospy.loginfo(self.imu_angle)
+        # rospy.loginfo(self.imu_angle)
+
+    def set_tar_angle(self):
+        self.tar_angle = self.imu_angle
+
+    def imu_feedback(self, target_angle):
+        # 22 beats per round, such that gentle mode rotates at 16.3 deg/s, 0.286 rad/s
+        diff = target_angle - self.imu_angle
+        if math.fabs(diff) < 0.286:
+            kp = diff/math.fabs(diff)
+        else:
+            kp = diff/0.286
+        self.servo_cmd[0] = self.max_turn_angle_val * kp #direction?
 
     def pos_control(self, servo_no, tar):
         pos = self.servo_equ_angles[servo_no]
@@ -77,7 +92,7 @@ class Teleop():
         self.servo_cmd[1] = self.pos_control(1, 1024)
 
     def turn_mode(self):
-        if math.fabs(self.servo_equ_angles[1] -2048) > self.max_turn_angle_val + 50:
+        if math.fabs(self.servo_equ_angles[0] -2048) > self.max_turn_angle_val + 50:
             return
         else:
             self.turning = True
@@ -105,7 +120,7 @@ class Teleop():
             self.turning = False
         turn_angle = 2048 + msg.axes[2]*self.max_turn_angle_val
         if self.turning:
-            self.servo_cmd[1] = self.pos_control(1, turn_angle)
+            self.servo_cmd[0] = self.pos_control(0, turn_angle)
 
         # if (math.fabs(self.servo_equ_angles[1] - 2048) > self.max_turn_angle_val and
         #         math.fabs(self.servo_equ_angles[1]-self.servo_equ_angles[0]) < 100):
@@ -152,6 +167,13 @@ class Teleop():
         # sync the two servos to middle position
         if msg.axes[10] != 0.0 or msg.buttons[1]: # front or back
             self.servo_sync()
+
+        if msg.buttons[3] == 1:
+            self.feed_back = not self.feed_back
+            self.set_tar_angle()
+
+        if self.feed_back:
+            self.imu_feedback(self.tar_angle)
 
         #for mid-actuation disk, reverse servo 0
         # self.servo_cmd[0] = -self.servo_cmd[0]
