@@ -57,9 +57,9 @@ class Teleop():
         diff = target_angle - self.imu_angle
         if math.fabs(diff) > math.pi:
             if diff > 0:
-                diff -= math.pi
+                diff -= 2*math.pi
             else:
-                diff += math.pi
+                diff += 2*math.pi
         if diff == 0:
             kp = 0
         elif math.fabs(diff) > 0.286:
@@ -73,6 +73,7 @@ class Teleop():
         if math.fabs(self.servo_equ_angles[1] - 2048) < 100:
             self.kp = kp
         self.servo_cmd[0] = self.pos_control(0, 2048 + 1024 * self.kp) #direction?
+        rospy.loginfo(2048+1024*self.kp)
 
     def pos_control(self, servo_no, tar):
         pos = self.servo_equ_angles[servo_no]
