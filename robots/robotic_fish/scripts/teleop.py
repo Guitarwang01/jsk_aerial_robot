@@ -55,6 +55,7 @@ class Teleop():
     def imu_feedback(self, target_angle):
         # 22 beats per round, such that gentle mode rotates at 16.3 deg/s, 0.286 rad/s
         diff = target_angle - self.imu_angle
+        zone = 2*0.286
         if math.fabs(diff) > math.pi:
             if diff > 0:
                 diff -= 2*math.pi
@@ -62,17 +63,17 @@ class Teleop():
                 diff += 2*math.pi
         if diff == 0:
             kp = 0
-        elif math.fabs(diff) > 0.286:
+        elif math.fabs(diff) > zone:
             if diff > 0:
                 kp = 1
             else:
                 kp = -1
         else:
-            kp = diff/0.286
+            kp = diff/zone
 
         if math.fabs(self.servo_equ_angles[1] - 2048) < 100:
             self.kp = kp
-        self.servo_cmd[0] = self.pos_control(0, 2048 + 1024 * self.kp) #direction?
+        self.servo_cmd[0] = self.pos_control(0, 2048 - 1024 * self.kp) #direction?
         rospy.loginfo(2048+1024*self.kp)
 
     def pos_control(self, servo_no, tar):
