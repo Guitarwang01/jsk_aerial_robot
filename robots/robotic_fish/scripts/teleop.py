@@ -28,8 +28,10 @@ class Teleop():
         self.turning = rospy.get_param('~turning', False)
         self.imu_angle = rospy.get_param('imu_angle', 0.0)
         self.tar_angle = rospy.get_param('~tar_angle', 0.0)
-        self.kp = rospy.get_param('~kp', 0.0)
-
+        self.tar_angle_ref = rospy.get_param('~tar_angle_ref', 0.0)
+        self.imu_kp = rospy.get_param('~imu_kp', 0.0)
+        self.demo1 = rospy.get_param('~demo1', True)
+        self.demo2 = rospy.get_param('~demo2', False)
         self.fin_angle_rate = rospy.get_param('fin_angle_rate', 1024.0)
 
         self.joy_sub = rospy.Subscriber('/joy', Joy, self._joyCallback)
@@ -50,6 +52,7 @@ class Teleop():
 
     def set_tar_angle(self):
         self.tar_angle = self.imu_angle
+        self.tar_angle_ref = self.imu_angle
         rospy.loginfo(self.imu_angle)
 
     def imu_feedback(self, target_angle):
@@ -72,9 +75,9 @@ class Teleop():
             kp = diff/zone
 
         if math.fabs(self.servo_equ_angles[1] - 2048) < 100:
-            self.kp = kp
-        self.servo_cmd[0] = self.pos_control(0, 2048 - 1024 * self.kp) #direction?
-        rospy.loginfo(2048+1024*self.kp)
+            self.imu_kp = kp
+        self.servo_cmd[0] = self.pos_control(0, 2048 - self.max_turn_angle_val * self.imu_kp) #direction?
+        rospy.loginfo(2048 - self.max_turn_angle_val*self.imu_kp)
 
     def pos_control(self, servo_no, tar):
         pos = self.servo_equ_angles[servo_no]
@@ -141,14 +144,6 @@ class Teleop():
         if self.turning:
             self.servo_cmd[0] = self.pos_control(0, turn_angle)
 
-        # if (math.fabs(self.servo_equ_angles[1] - 2048) > self.max_turn_angle_val and
-        #         math.fabs(self.servo_equ_angles[1]-self.servo_equ_angles[0]) < 100):
-        #     self.servo_cmd[1] = forward_val
-
-        # hold servo 1 and only control servo 0
-        # if msg.buttons[0] == 1: # square
-        #     self.servo_cmd[1] = 0
-
         # only control one servo with L2 & R2 & square
         if msg.buttons[6] == 1: #L2
             vel_0 = -0.5 * (msg.axes[3] - 1.0)
@@ -165,10 +160,10 @@ class Teleop():
                 else:
                     self.servo_cmd[1] = vel_0 * self.vel_rate
 
-        #TODO2: fin control
-        fin_angle_ctrl = msg.axes[5] # stick_r vertical
-        fin_angle = -fin_angle_ctrl * self.fin_angle_rate + 2048.0
-        self.servo_cmd[2] = fin_angle
+        # #TODO2: fin control
+        # fin_angle_ctrl = msg.axes[4] # stick_r vertical
+        # fin_angle = -fin_angle_ctrl * self.fin_angle_rate + 2048.0
+        # self.servo_cmd[2] = fin_angle
 
         # TODO1: Speed Keep
         if msg.buttons[5] == 1: #R2
@@ -187,12 +182,25 @@ class Teleop():
         if msg.axes[10] != 0.0 or msg.buttons[1]: # front or back
             self.servo_sync()
 
-        #imu feedback
-        if msg.buttons[2] ==1:
+        # imu feedback
+        if msg.buttons[2] == 1:
             self.set_tar_angle()
-
         if msg.buttons[3] == 1:
             self.imu_feedback(self.tar_angle)
+
+        # press left & right stick to shift demo 1 and demo 2
+        if msg.buttons[10] == 1:
+            self.demo1 = False
+            self.demo2 = True
+        if msg.buttons[11] == 1:
+            self.demo1 = True
+            self.demo2 = False
+
+        # demo1
+        if self.demo1:
+            ref_angle = math.atan2(msg.axes[3], msg.axes[4])
+            tar_angle = ref_angle + self.tar_angle_ref
+            self.imu_feedback(tar_angle)
 
         #for mid-actuation disk, reverse servo 0
         # self.servo_cmd[0] = -self.servo_cmd[0]
