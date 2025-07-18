@@ -30,7 +30,7 @@ class Teleop():
         self.tar_angle = rospy.get_param('~tar_angle', 0.0)
         self.tar_angle_ref = rospy.get_param('~tar_angle_ref', 0.0)
         self.imu_kp = rospy.get_param('~imu_kp', 0.0)
-        self.demo1 = rospy.get_param('~demo1', True)
+        self.demo1 = rospy.get_param('~demo1', False)
         self.demo2 = rospy.get_param('~demo2', False)
         self.fin_angle_rate = rospy.get_param('fin_angle_rate', 1024.0)
 
@@ -58,7 +58,7 @@ class Teleop():
     def imu_feedback(self, target_angle):
         # 22 beats per round, such that gentle mode rotates at 16.3 deg/s, 0.286 rad/s
         diff = target_angle - self.imu_angle
-        zone = 2*0.286
+        zone = 0.286
         if math.fabs(diff) > math.pi:
             if diff > 0:
                 diff -= 2*math.pi
@@ -179,8 +179,14 @@ class Teleop():
             self.right_pose()
 
         # sync the two servos to middle position
-        if msg.axes[10] != 0.0 or msg.buttons[1]: # front or back
+        if msg.axes[10] != 0.0: # front or back
             self.servo_sync()
+
+        # get back to normal mode
+        if msg.buttons[1] == 1:
+            self.servo_sync()
+            self.demo1 = False
+            self.demo2 = False
 
         # imu feedback
         if msg.buttons[2] == 1:
@@ -198,9 +204,21 @@ class Teleop():
 
         # demo1
         if self.demo1:
-            ref_angle = math.atan2(msg.axes[3], msg.axes[4])
+            if msg.axes[2] == 0.0 and msg.axes[5] == 0.0:
+                ref_angle = 0.0
+            else:
+                ref_angle = math.atan2(msg.axes[2], msg.axes[5])
+            rospy.loginfo(ref_angle)
             tar_angle = ref_angle + self.tar_angle_ref
+            if math.fabs(tar_angle) > math.pi:
+                if tar_angle < 0:
+                    tar_angle += 2*math.pi
+                else:
+                    tar_angle -= 2*math.pi
             self.imu_feedback(tar_angle)
+
+        # demo2
+
 
         #for mid-actuation disk, reverse servo 0
         # self.servo_cmd[0] = -self.servo_cmd[0]
