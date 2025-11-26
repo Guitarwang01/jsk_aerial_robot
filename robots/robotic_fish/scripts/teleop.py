@@ -53,7 +53,7 @@ class Teleop():
     def set_imu_tar_angle(self):
         self.tar_angle = self.imu_angle
         self.tar_angle_ref = self.imu_angle
-        rospy.loginfo(self.imu_angle)
+        # rospy.loginfo(self.imu_angle)
 
     def imu_feedback(self, target_angle):
         # 22 beats per round, such that gentle mode rotates at 16.3 deg/s, 0.286 rad/s
@@ -78,7 +78,7 @@ class Teleop():
             self.imu_kp = kp
         self.servo_cmd[0] = self.pos_control(0, 2048 - self.max_turn_angle_val * self.imu_kp, 1.0) #direction?
         # rospy.loginfo(2048 - self.max_turn_angle_val*self.imu_kp)
-        rospy.loginfo(diff)
+        # rospy.loginfo(diff)
 
     def pos_control(self, servo_no, tar, rate):
         pos = self.servo_equ_angles[servo_no]
@@ -219,7 +219,7 @@ class Teleop():
                 ref_angle = 0.0
             else:
                 ref_angle = math.atan2(msg.axes[2], msg.axes[5])
-            rospy.loginfo(ref_angle)
+            # rospy.loginfo(ref_angle)
             tar_angle = ref_angle + self.tar_angle_ref
             # rospy.loginfo(tar_angle)
             if math.fabs(tar_angle) > math.pi:
