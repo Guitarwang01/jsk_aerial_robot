@@ -204,6 +204,7 @@ class Teleop():
             self.imu_feedback(self.tar_angle)
 
         # shift to demo 1, demo 2 and normal mode by pressing left&right stick
+        # test
         if msg.buttons[10] == 1: # demo 2
             self.demo1 = False
             self.demo2 = True
