@@ -32,7 +32,7 @@ class Teleop():
         self.demo2 = rospy.get_param('~demo2', False)
         self.fast_turn = rospy.get_param('~fast_turn', False)
         # self.servo_arrived = rospy.get_param('~servo_arrived', [0, 0])
-        self.fin_angle_rate = rospy.get_param('fin_angle_rate', 1024.0)
+        self.fin_angle_rate = rospy.get_param('fin_angle_rate', 512.0)
 
         self.joy_sub = rospy.Subscriber('/joy', Joy, self._joyCallback)
         self.twist_sub = rospy.Subscriber('/cmd_vel', Twist, self._twistCallback)
@@ -168,10 +168,10 @@ class Teleop():
                 else:
                     self.servo_cmd[1] = vel_0 * self.vel_rate
 
-        # #TODO2: fin control
-        # fin_angle_ctrl = msg.axes[4] # stick_r vertical
-        # fin_angle = -fin_angle_ctrl * self.fin_angle_rate + 2048.0
-        # self.servo_cmd[2] = fin_angle
+        #TODO2: fin control
+        fin_angle_ctrl = msg.axes[5] # stick_r vertical
+        fin_angle = -fin_angle_ctrl * self.fin_angle_rate + 2048.0
+        self.servo_cmd[2] = self.pos_control(1, fin_angle, 0.5)
 
         # TODO1: Speed Keep
         if msg.buttons[5] == 1: #R2
@@ -215,20 +215,20 @@ class Teleop():
             self.fast_turn = False
 
         # demo1
-        if self.demo1:
-            if msg.axes[2] == 0.0 and msg.axes[5] == 0.0:
-                ref_angle = 0.0
-            else:
-                ref_angle = math.atan2(msg.axes[2], msg.axes[5])
-            # rospy.loginfo(ref_angle)
-            tar_angle = ref_angle + self.tar_angle_ref
-            # rospy.loginfo(tar_angle)
-            if math.fabs(tar_angle) > math.pi:
-                if tar_angle < 0:
-                    tar_angle += 2*math.pi
-                else:
-                    tar_angle -= 2*math.pi
-            self.imu_feedback(tar_angle)
+        # if self.demo1:
+        #     if msg.axes[2] == 0.0 and msg.axes[5] == 0.0:
+        #         ref_angle = 0.0
+        #     else:
+        #         ref_angle = math.atan2(msg.axes[2], msg.axes[5])
+        #     # rospy.loginfo(ref_angle)
+        #     tar_angle = ref_angle + self.tar_angle_ref
+        #     # rospy.loginfo(tar_angle)
+        #     if math.fabs(tar_angle) > math.pi:
+        #         if tar_angle < 0:
+        #             tar_angle += 2*math.pi
+        #         else:
+        #             tar_angle -= 2*math.pi
+        #     self.imu_feedback(tar_angle)
 
         # demo2: rapid return
         if self.demo2:
@@ -252,10 +252,10 @@ class Teleop():
 
         # motor_vel = np.array([int(forward_vel), int(forward_val)], dtype=np.int16)
         msg_0 = ServoControlCmd()
-        msg_0.index = [0,1,2]
+        msg_0.index = [0,1]
         msg_0.cmd.append(int(self.servo_cmd[0]))
         msg_0.cmd.append(int(self.servo_cmd[1]))
-        msg_0.cmd.append(int(self.servo_cmd[2]))
+        # msg_0.cmd.append(int(self.servo_cmd[2]))
         self.cmd_pub.publish(msg_0)
 
 

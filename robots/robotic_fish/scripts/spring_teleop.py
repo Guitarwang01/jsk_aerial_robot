@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 from __future__ import print_function # for print function in python2
+
+import time
+
 # import sys, select, termios, tty
 
 import numpy as np
@@ -35,7 +38,7 @@ class Teleop():
         self.joy_sub = rospy.Subscriber('/joy', Joy, self._joyCallback)
         self.twist_sub = rospy.Subscriber('/cmd_vel', Twist, self._twistCallback)
         self.servo_pos_sub = rospy.Subscriber('/servo/states', ServoStates, self._servoStateCallback)
-        # self.servo_torque_sub = rospy.Subscriber('/servo/torque_enable', ServoTorqueStates, self._servoTorqueStateCallback)
+        self.servo_torque_sub = rospy.Subscriber('/servo/torque_states', ServoTorqueStates, self._servoTorqueStateCallback)
 
         self.cmd_pub = rospy.Publisher('/servo/target_states', ServoControlCmd, queue_size=1)
         # self.torque_pub = rospy.Publisher('/servo/torque_enable', ServoTorqueCmd, queue_size=1)
@@ -73,7 +76,7 @@ class Teleop():
     def servo_sync(self):
         self.servo_cmd[0] = self.pos_control(0, 2048, 1)
         self.servo_cmd[1] = self.pos_control(1, 2048, 1)
-        self.servo_cmd[2] = self.pos_control(2, 2048, 1)
+        # self.servo_cmd[2] = self.pos_control(2, 2048, 1)
 
     def left_pose(self):
         # self.servo_cmd[0] = self.pos_control(0, 1024, 1)
@@ -82,6 +85,14 @@ class Teleop():
     def right_pose(self):
         # self.servo_cmd[0] = self.pos_control(0, 3072, 1)
         self.servo_cmd[1] = self.pos_control(1, 1024, 1)
+
+    # def reboot_servo_2(self):
+    #     msg = ServoTorqueCmd()
+    #     msg.index = [2]
+    #     msg.torque_enable = [0]
+    #     self.torque_pub
+    #     time.sleep(2)
+    #     msg.torque_enable
 
     def _joyCallback(self, msg):
 
@@ -96,8 +107,8 @@ class Teleop():
         if forward_val < -self.max_val:
             forward_val = -self.max_val
 
-        self.servo_cmd[1] = 0
-        self.servo_cmd[0] = 0
+        self.servo_cmd[1] = forward_val
+        self.servo_cmd[0] = -forward_val
         self.servo_cmd[2] = 0
 
         # only control one servo with L2 & R2 & square
@@ -130,6 +141,7 @@ class Teleop():
         if msg.buttons[2] == 1: #lock
             self.servo_cmd[2] = self.pos_control(2, 2048+600, 1)
         if msg.buttons[1] == 1: #unlock
+            # time.sleep(2)
             self.servo_cmd[2] = self.pos_control(2, 2048, 1)
 
         # spring charge
