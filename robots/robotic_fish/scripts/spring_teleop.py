@@ -143,6 +143,7 @@ class Teleop():
         if msg.buttons[1] == 1: #unlock
             # time.sleep(2)
             self.servo_cmd[2] = self.pos_control(2, 2048, 1)
+            self.servo_cmd[1] = self.pos_control(1, 0, 1)
 
         # spring charge
         if msg.buttons[5] == 1:
