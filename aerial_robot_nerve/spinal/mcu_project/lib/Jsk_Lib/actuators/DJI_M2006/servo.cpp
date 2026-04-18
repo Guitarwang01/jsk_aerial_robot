@@ -147,7 +147,7 @@ Interface::Interface(): servo_state_pub_("servo/extended_states", &servo_states_
                         servo_pid_gain_sub_("servo/set_pid_gain", &Interface::servoPIDGainCallback, this)
 {
   /* variables */
-  init_cnt_ = 1; // for catch the CAN messages from servo, 100 messages.
+  init_cnt_ = 10; // for catch the CAN messages from servo, 100 messages.
   servo_states_msg_.servos_length = 0;
 
   /* timer */
