@@ -1,0 +1,12 @@
+{
+  "model_id": "SYNTHETIC_PIPELINE_TEST_ONLY_NOT_FOR_DIRECTION_ESTIMATION",
+  "frame": "FRD",
+  "classes": ["front_right", "rear_right", "rear_left", "front_left"],
+  "features": ["head_ratio", "left_ratio", "lr_difference", "head_sides_difference"],
+  "mean": [0, 0, 0, 0],
+  "scale": [1, 1, 1, 1],
+  "weights": [[0,0,-1,1], [0,0,-1,-1], [0,0,1,-1], [0,0,1,1]],
+  "bias": [0,0,0,0],
+  "temperature": 1,
+  "window_s": 0.5
+}
