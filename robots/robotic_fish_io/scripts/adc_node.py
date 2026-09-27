@@ -11,6 +11,7 @@ from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from robotic_fish_io.msg import DacState
 from robotic_fish_io.runtime_config import ConfigRecorder
 
+from robotic_fish_io.adc_mean import RawVoltageMean
 from robotic_fish_io.adc_calibration import AdcCalibration
 from robotic_fish_io import adc_driver
 from robotic_fish_io.msg import AdcSample, AdcSampleArray
@@ -62,6 +63,8 @@ class AdcNode:
         )
 
         self._validate_parameters()
+        self.raw_means = {channel: RawVoltageMean(max(.2, 3.0 / self.channel_rate))
+                          for channel in self.channels}
         self.calibration = None
         self.calibration_path = None
         self.calibration_status = "disabled"
@@ -205,6 +208,8 @@ class AdcNode:
         )
 
     def _close_bus(self):
+        for mean in self.raw_means.values():
+            mean.reset()
         if self.bus is not None:
             try:
                 self.bus.close()
@@ -250,6 +255,12 @@ class AdcNode:
             reading.completed_ns - reading.started_ns
         ) / 1e6
         return msg
+
+    def _update_means(self, samples):
+        for sample in samples:
+            sample.volt_raw_mean_1s, sample.mean_1s_ready = self.raw_means[sample.channel_id].update(
+                sample.timestamp.to_sec(), sample.volt_raw,
+                sample.status_dac_feedback, sample.dac_volt)
 
     def _publish_diagnostic(self, force=False):
         now_ns = time.monotonic_ns()
@@ -320,6 +331,7 @@ class AdcNode:
                 for channel in self.channels:
                     sample = self._sample_channel(channel)
                     samples.append(sample)
+                self._update_means(samples)
                 self._apply_calibration(samples)
                 for sample in samples:
                     self.sample_pub.publish(sample)

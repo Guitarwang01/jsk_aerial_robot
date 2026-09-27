@@ -15,3 +15,8 @@ string cali_id
 # NaN when status_dac_feedback is false; not independent analog feedback.
 float64 dac_volt
 bool status_dac_feedback
+# Per-channel arithmetic mean of volt_raw over the trailing 1 second (V).
+# Partial mean during warmup; for display/manual gain tuning, not protection.
+float64 volt_raw_mean_1s
+# Full second accumulated with known, unchanged DAC state and no sampling gap.
+bool mean_1s_ready
