@@ -30,16 +30,23 @@ def main():
             raise RuntimeError('roscore startup timeout')
         import rospy
         from robotic_fish_io.msg import AdcSample, AdcSampleArray
-        from robotic_fish_acoustic.msg import QuadrantProbabilities
+        from robotic_fish_acoustic.msg import QuadrantProbabilities, ChannelComparison
+        from robotic_fish_acoustic.core import Estimator, Status
+        from diagnostic_msgs.msg import DiagnosticArray
         from quadrant_node import Node
         rospy.init_node('quadrant_smoke', disable_signals=True)
         rospy.set_param('~model', str(ROOT / 'test/fixture_model.json'))
         node = Node()
         received = []
+        diagnostics = []
+        comparisons = []
+        comparison_sub = rospy.Subscriber('~comparison', ChannelComparison, comparisons.append)
+        diagnostic_sub = rospy.Subscriber('/diagnostics', DiagnosticArray, diagnostics.append)
         sub = rospy.Subscriber('~probabilities', QuadrantProbabilities, received.append)
         pub = rospy.Publisher('/robotic_fish/adc/samples', AdcSampleArray, queue_size=10)
         deadline = time.monotonic() + 5
-        while (pub.get_num_connections() == 0 or node.pub.get_num_connections() == 0) and time.monotonic() < deadline:
+        while (pub.get_num_connections() == 0 or node.pub.get_num_connections() == 0 or
+               node.comparison_pub.get_num_connections() == 0) and time.monotonic() < deadline:
             time.sleep(.02)
         for _ in range(12):
             message = AdcSampleArray()
@@ -67,6 +74,34 @@ def main():
         assert not held.updated and held.status & held.STALE
         assert held.estimate_stamp == last.estimate_stamp
         print('PASS: 12 ROS updates, fallback retained, FRD marginals, stale heartbeat retains estimate stamp')
+        with node.lock:
+            node.engine = Estimator()
+        pub.publish(message)
+        time.sleep(.3)
+        missing = received[-1]
+        assert not missing.has_estimate and missing.status & Status.MODEL_UNAVAILABLE
+        import math
+        assert math.isnan(missing.probability_front_right)
+        assert any('MODEL_UNAVAILABLE' in status.message
+                   for array in diagnostics for status in array.status)
+        assert comparisons[-1].has_comparison
+        assert abs(comparisons[-1].left_right_normalized_difference - 1/3) < 1e-12
+        assert abs(comparisons[-1].head_sides_normalized_difference + .2) < 1e-12
+        assert not comparisons[-1].reliable
+        assert not comparisons[-1].status & Status.MODEL_UNAVAILABLE
+        assert comparisons[-1].sample_stamp == message.samples[-1].timestamp
+        for _ in range(12):
+            for sample in message.samples:
+                sample.timestamp = rospy.Time.now()
+                sample.status_cali = True
+                sample.cali_id = 'synthetic'
+            pub.publish(message)
+            time.sleep(.05)
+        assert any(c.reliable and c.updated for c in comparisons)
+        print('PASS: model-free numeric comparisons, stale timestamps, reliable calibrated window')
+        print('PASS: missing model keeps probabilities unavailable and publishes actionable diagnostics')
+        comparison_sub.unregister()
+        diagnostic_sub.unregister()
         sub.unregister()
         pub.unregister()
         node.timer.shutdown()

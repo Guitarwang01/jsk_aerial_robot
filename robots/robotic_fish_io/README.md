@@ -287,7 +287,7 @@ The three channels are sequential and retain separate timestamps. The outer
 The current default calibration is:
 
 ```text
-config/calibration/adc_independent_transfer_20260901_171408_calbri05_raw.json
+config/calibration/adc_independent_transfer_2026-09-27-13-51-52.json
 ```
 
 It is selected in `config/io.yaml`:
@@ -297,7 +297,7 @@ adc:
   calibration:
     enabled: true
     required: true
-    file: calibration/adc_independent_transfer_20260901_171408_calbri05_raw.json
+    file: calibration/adc_independent_transfer_2026-09-27-13-51-52.json
 ```
 
 A relative path is resolved against this package's `config/` directory. An absolute path is also accepted. With `required: true`, a missing, malformed, or incompatible calibration file prevents the ADC node from starting instead of silently using invalid calibration data.
@@ -310,6 +310,15 @@ volt_cali = volt_raw
 ```
 
 This prevents calibrated and uncalibrated values from being mixed within one three-channel group.
+
+The September 27 equal-input sweep provides 112 nodes per channel. Raw input
+ranges are ADC0 0.01175–3.26569 V, ADC1 0.01225–3.18756 V, and ADC2
+0.02075–3.27638 V (endpoint tolerance 0.0025 V). High-voltage and safety-recovery
+segments were excluded. Within-sweep temporal holdout relative spread has median
+0.78% and 95th percentile 1.59%; this is relative channel matching, not absolute
+voltage accuracy or cross-experiment validation. Details and reproducible fitting
+commands are archived locally with the source bag at
+`/home/dragon/Desktop/fish_rosbag/analysis/20260927/README.md`. Restart ADC after changing the file.
 
 ### 4.4 `AdcSample` fields
 

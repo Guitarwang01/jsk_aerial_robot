@@ -96,6 +96,74 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(r['updated'])
         self.assertTrue(r['status'] & Status.LOW_SIGNAL)
 
+    def test_comparison_without_model(self):
+        e = Estimator()
+        for i in range(12):
+            result = e.push(batch(10+i*.05), 10+i*.05)
+        c = result['comparison']
+        self.assertTrue(c['reliable'])
+        self.assertAlmostEqual(c['left_right_normalized_difference'], 1/3)
+        self.assertAlmostEqual(c['head_sides_normalized_difference'], -.2)
+        self.assertEqual(result['features'][2:], [c['left_right_normalized_difference'],
+                                                 c['head_sides_normalized_difference']])
+        self.assertFalse(c['status'] & Status.MODEL_UNAVAILABLE)
+        self.assertIsNone(result['probabilities'])
+
+    def test_comparison_signs_and_symmetry(self):
+        for values, expected in [((1., 1., 1.), (0., 0.)),
+                                 ((3., 1., 1.), (0., .5)),
+                                 ((1., 1., 3.), (-.5, -1/3)),
+                                 ((1., 3., 1.), (.5, -1/3)),
+                                 ((1., 0., 0.), (0., 1.))]:
+            with self.subTest(values=values):
+                c = Estimator().push(batch(10., values=values), 10.)['comparison']
+                self.assertAlmostEqual(c['left_right_normalized_difference'], expected[0])
+                self.assertAlmostEqual(c['head_sides_normalized_difference'], expected[1])
+                if values == (1., 0., 0.):
+                    self.assertFalse(c['reliable'])
+                    self.assertTrue(c['status'] & Status.INVALID_INPUT)
+
+    def test_comparison_without_input(self):
+        c = Estimator().snapshot(10.)['comparison']
+        self.assertFalse(c['has_comparison'])
+        self.assertFalse(c['reliable'])
+
+    def test_comparison_hold_preserves_stamp_and_marks_stale(self):
+        e = Estimator()
+        first = e.push(batch(10.), 10.)['comparison']
+        held = e.snapshot(11.)['comparison']
+        self.assertEqual(first['sample_stamp'], held['sample_stamp'])
+        self.assertFalse(held['updated'])
+        self.assertFalse(held['reliable'])
+        self.assertTrue(held['status'] & Status.STALE)
+
+    def test_comparison_zero_is_numeric_but_not_reliable(self):
+        c = Estimator().push(batch(10., values=(0., 0., 0.)), 10.)['comparison']
+        self.assertTrue(c['updated'])
+        self.assertEqual(c['left_right_normalized_difference'], 0.)
+        self.assertEqual(c['head_sides_normalized_difference'], 0.)
+        self.assertFalse(c['reliable'])
+
+    def test_comparison_fallback_never_reliable(self):
+        e = Estimator()
+        for i in range(12):
+            c = e.push(batch(10+i*.05, calibrated=False), 10+i*.05)['comparison']
+        self.assertFalse(c['reliable'])
+        self.assertTrue(c['status'] & Status.CALIBRATION_FALLBACK)
+
+    def test_gain_transition_resets_comparison_window(self):
+        e = Estimator()
+        for i in range(12):
+            e.push(batch(10+i*.05), 10+i*.05)
+        message = batch(10.6, values=(3., 2., 1.))
+        for sample in message.samples:
+            sample.dac_volt = 1.
+        c = e.push(message, 10.6)['comparison']
+        self.assertAlmostEqual(c['left_right_normalized_difference'], 1/3)
+        self.assertAlmostEqual(c['head_sides_normalized_difference'], 1/3)
+        self.assertFalse(c['reliable'])
+        self.assertTrue(c['status'] & Status.GAIN_TRANSITION)
+
 
 if __name__ == '__main__':
     unittest.main()

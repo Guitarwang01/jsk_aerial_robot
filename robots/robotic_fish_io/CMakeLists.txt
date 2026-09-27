@@ -39,6 +39,7 @@ catkin_install_python(PROGRAMS
   scripts/agc_node.py
   scripts/adc_node.py
   scripts/dac_node.py
+  scripts/calibrate_from_bag.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -49,6 +50,7 @@ install(DIRECTORY config launch
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_drivers.py)
   catkin_add_nosetests(test/test_calibration.py)
+  catkin_add_nosetests(test/test_bag_calibration.py)
   catkin_add_nosetests(test/test_agc.py)
   catkin_add_nosetests(test/test_manual_gain.py)
   catkin_add_nosetests(test/test_safety_window.py)

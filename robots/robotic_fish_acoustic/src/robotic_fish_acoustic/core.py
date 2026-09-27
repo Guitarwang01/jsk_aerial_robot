@@ -108,9 +108,10 @@ class Estimator:
         self.signature = None
         self.last_input = None
         self.last = None
+        self.last_comparison = None
         self.current_status = 0
 
-    def snapshot(self, now, status=None, updated=False):
+    def snapshot(self, now, status=None, updated=False, comparison_updated=False):
         if status is not None:
             self.current_status = int(status)
         status = Status(self.current_status)
@@ -123,6 +124,12 @@ class Estimator:
                                        timestamp_semantics='unknown'))
         result.update(status=int(status), updated=updated, has_estimate=self.last is not None,
                       model_id=self.model.id if self.model else 'unavailable')
+        comparison = dict(self.last_comparison or {})
+        comparison_status = int(status & ~Status.MODEL_UNAVAILABLE)
+        comparison.update(has_comparison=self.last_comparison is not None,
+                          updated=comparison_updated, status=comparison_status,
+                          reliable=self.last_comparison is not None and comparison_status == 0)
+        result['comparison'] = comparison
         return result
 
     def push(self, message, now):
@@ -156,10 +163,18 @@ class Estimator:
         s = h + l + r
         if min(s, l + r, h + (l + r) / 2) < self.low_signal_v:
             flags |= Status.LOW_SIGNAL
-        if min(s, l + r, h + (l + r) / 2) <= 0:
-            return self.snapshot(now, flags | Status.INVALID_INPUT)
-        features = [h / s, l / s, (l-r)/(l+r), (h-(l+r)/2)/(h+(l+r)/2)]
-        result = self.snapshot(now, flags)
+        # Assumed sensor mapping: ADC0=head, ADC1=left, ADC2=right.
+        # Compare voltage window means, independently of any direction model.
+        sides = (l + r) / 2
+        lr_difference = (l - r) / (l + r) if l + r > 0 else 0.
+        head_sides_difference = (h - sides) / (h + sides) if h + sides > 0 else 0.
+        self.last_comparison = dict(sample_stamp=t,
+                                    left_right_normalized_difference=lr_difference,
+                                    head_sides_normalized_difference=head_sides_difference)
+        if min(s, l + r, h + sides) <= 0:
+            return self.snapshot(now, flags | Status.INVALID_INPUT, comparison_updated=True)
+        features = [h / s, l / s, lr_difference, head_sides_difference]
+        result = self.snapshot(now, flags, comparison_updated=True)
         result['features'] = features
         if self.model:
             try:
@@ -167,11 +182,11 @@ class Estimator:
                 if not all(math.isfinite(p) for p in probabilities):
                     raise ValueError('nonfinite prediction')
             except (ValueError, OverflowError, ZeroDivisionError):
-                return self.snapshot(now, flags | Status.INVALID_INPUT)
+                return self.snapshot(now, flags | Status.INVALID_INPUT, comparison_updated=True)
             self.last = dict(probabilities=probabilities, estimate_stamp=t,
                              window_start=self.rows[0]['t'], window_end=t,
                              valid_sample_count=len(self.rows), estimate_status=int(flags),
                              timestamp_semantics=g['semantics'])
-            result = self.snapshot(now, flags, True)
+            result = self.snapshot(now, flags, True, comparison_updated=True)
             result['features'] = features
         return result

@@ -5,5 +5,6 @@
     <param name="model" value="$(arg model)"/>
     <param name="window_s" value="$(arg window_s)"/>
     <remap from="~probabilities" to="/robotic_fish/acoustic/quadrant_probabilities"/>
+    <remap from="~comparison" to="/robotic_fish/acoustic/channel_comparison"/>
   </node>
 </launch>
