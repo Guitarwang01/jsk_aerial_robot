@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   diagnostic_msgs
   message_generation
   rospy
+  sensor_msgs
   std_msgs
   std_srvs
 )
@@ -15,6 +16,8 @@ add_message_files(
   FILES
   AdcSample.msg
   AdcSampleArray.msg
+  DacState.msg
+  RuntimeConfig.msg
   GainControlState.msg
 )
 
@@ -29,13 +32,14 @@ generate_messages(
 )
 
 catkin_package(
-  CATKIN_DEPENDS diagnostic_msgs message_runtime rospy std_msgs std_srvs
+  CATKIN_DEPENDS diagnostic_msgs message_runtime rospy sensor_msgs std_msgs std_srvs
 )
 
 catkin_install_python(PROGRAMS
   scripts/agc_node.py
   scripts/adc_node.py
   scripts/dac_node.py
+  scripts/calibrate_from_bag.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -45,6 +49,11 @@ install(DIRECTORY config launch
 
 if(CATKIN_ENABLE_TESTING)
   catkin_add_nosetests(test/test_drivers.py)
+  catkin_add_nosetests(test/test_adc_mean.py)
   catkin_add_nosetests(test/test_calibration.py)
+  catkin_add_nosetests(test/test_bag_calibration.py)
   catkin_add_nosetests(test/test_agc.py)
+  catkin_add_nosetests(test/test_manual_gain.py)
+  catkin_add_nosetests(test/test_safety_window.py)
+  catkin_add_nosetests(test/test_node_safety.py)
 endif()
